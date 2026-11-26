@@ -1,13 +1,18 @@
 from __future__ import annotations
 
 import csv
+import hashlib
+import hmac
 import io
+import json
 import os
 from typing import Any
 
 import psycopg
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
+
+from pipelines.connectors.hubspot import HubSpotConnector
 
 app = FastAPI()
 
@@ -107,6 +112,39 @@ async def get_leads(
             }
         )
     return result
+
+
+def _verify_hubspot_hmac(signature: str, timestamp: str, url: str, body: bytes) -> None:
+    """Verify HubSpot v3 webhook signature. Raises HTTP 403 on failure."""
+    client_secret = os.environ.get("HUBSPOT_CLIENT_SECRET", "")
+    if not client_secret:
+        raise HTTPException(status_code=403, detail="missing client secret")
+    message = f"POST{url}{body.decode()}{timestamp}".encode()
+    expected = hmac.new(client_secret.encode(), message, hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(expected, signature):
+        raise HTTPException(status_code=403, detail="invalid signature")
+
+
+@app.post("/hubspot/webhook", status_code=200)
+async def hubspot_webhook(request: Request) -> dict[str, str]:
+    body = await request.body()
+    sig = request.headers.get("X-HubSpot-Signature-v3", "")
+    ts = request.headers.get("X-HubSpot-Request-Timestamp", "")
+    _verify_hubspot_hmac(sig, ts, str(request.url), body)
+    events = json.loads(body)
+    conn = _get_conn()
+    connector = HubSpotConnector()
+    connector.handle_webhook_events(events if isinstance(events, list) else [events], conn)
+    # Queue a pending_action for audit trail
+    conn.execute(
+        """
+        INSERT INTO core.pending_actions (connector, action_type, payload, status)
+        VALUES (%s, %s, %s::jsonb, %s)
+        """,
+        ("hubspot", "hubspot_contact_pull", json.dumps({"event_count": len(events)}), "approved"),
+    )
+    conn.commit()
+    return {"status": "queued"}
 
 
 @app.get("/leads/export.csv")

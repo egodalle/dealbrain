@@ -2,7 +2,7 @@
 -include .env
 export
 
-.PHONY: up down lint test migrate ingest ingest-dry-run dedupe score export-leads eval deploy deploy-status
+.PHONY: up down lint test migrate ingest ingest-dry-run dedupe score export-leads eval deploy deploy-status sync-hubspot
 
 DATASET ?= philly
 SUITE ?= all
@@ -55,3 +55,7 @@ deploy:
 
 deploy-status:
 	ssh $(DEALBRAIN_USER)@$(DEALBRAIN_HOST) "cd /srv/dealbrain && docker compose ps"
+
+sync-hubspot:
+	docker compose up -d --wait db
+	uv run python -m pipelines.connectors.hubspot_sync

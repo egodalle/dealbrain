@@ -1,0 +1,23 @@
+{
+  "results": [
+    {
+      "id": "hs-001",
+      "properties": {
+        "firstname": "Alice",
+        "lastname": "Smith",
+        "email": "alice@example.test",
+        "phone": "555-0100"
+      }
+    },
+    {
+      "id": "hs-002",
+      "properties": {
+        "firstname": "Bob",
+        "lastname": "Jones",
+        "email": "bob@example.test",
+        "phone": "555-0101"
+      }
+    }
+  ],
+  "paging": {}
+}

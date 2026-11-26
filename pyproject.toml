@@ -6,6 +6,7 @@ dependencies = [
     "httpx>=0.28.1",
     "psycopg[binary]>=3.3.9",
     "rapidfuzz>=3.9",
+    "respx>=0.23.1",
     "usaddress>=0.5.10",
 ]
 
