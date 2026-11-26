@@ -1,20 +1,42 @@
-"""RTT deed transfers pipeline: raw.transfers → staging.transfers."""
+"""RTT deed transfers pipeline: raw.transfers → staging.transfers.
+
+rtt_summary is very large, and filtering it by ZIP or date makes Carto scan the whole
+table. Instead, after OPA has loaded core.properties, we look transfers up by parcel
+number (opa_account_num), which is indexed, in batches of _ID_CHUNK parcels.
+"""
 
 from __future__ import annotations
 
 import json
 import logging
-import os
+import re
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from typing import Any
 
 import psycopg
 
-from pipelines.base import BasePipeline
+from pipelines.base import PAGE_SIZE, BasePipeline, philly_since, philly_zips, sql_in
 
 logger = logging.getLogger(__name__)
 
-_DEFAULT_URL = "https://data.phila.gov/resource/4iqs-r3wa.json"
+_ID_CHUNK = 150
+_PARCEL_RE = re.compile(r"^[0-9A-Za-z]{1,20}$")
+
+_COLUMNS = (
+    "document_id",
+    "document_type",
+    "display_date",
+    "recording_date",
+    "document_date",
+    "opa_account_num",
+    "street_address",
+    "zip_code",
+    "grantors",
+    "grantees",
+    "total_consideration",
+    "fair_market_value",
+)
 
 
 def _safe_numeric(val: Any) -> str | None:
@@ -32,12 +54,40 @@ def _safe_date(val: Any) -> str | None:
 @dataclass
 class TransfersPipeline(BasePipeline):
     dataset: str = "transfers"
-    socrata_url: str = field(
-        default_factory=lambda: os.environ.get("PHILLY_TRANSFERS_URL", _DEFAULT_URL)
-    )
+    carto_table: str = "rtt_summary"
+    carto_columns: tuple[str, ...] = _COLUMNS
     source_id_field: str = "document_id"
     raw_table: str = "raw.transfers"
     staging_table: str = "staging.transfers"
+    parcel_ids: list[str] = field(default_factory=list, repr=False)
+    current_chunk: list[str] = field(default_factory=list, repr=False)
+
+    def prepare(self, conn: psycopg.Connection[Any]) -> None:
+        rows = conn.execute(
+            "SELECT parcel_id FROM core.properties WHERE left(zip_code, 5) = ANY(%s)"
+            " ORDER BY parcel_id",
+            (philly_zips(),),
+        ).fetchall()
+        self.parcel_ids = [str(r[0]) for r in rows if _PARCEL_RE.match(str(r[0]))]
+        if not self.parcel_ids:
+            logger.warning(
+                "[transfers] core.properties has no parcels for PHILLY_ZIPS; run opa first"
+            )
+
+    def carto_where(self) -> str:
+        # Deeds only (sales, sheriff's deeds); mortgages and satisfactions are noise here.
+        return (
+            f"opa_account_num IN ({sql_in(self.current_chunk)}) "
+            f"AND display_date >= '{philly_since()}' "
+            "AND document_type ILIKE '%DEED%'"
+        )
+
+    def fetch_pages(
+        self, offset: int = 0, limit: int = PAGE_SIZE
+    ) -> Iterator[list[dict[str, Any]]]:
+        for i in range(0, len(self.parcel_ids), _ID_CHUNK):
+            self.current_chunk = self.parcel_ids[i : i + _ID_CHUNK]
+            yield from super().fetch_pages(0, limit)
 
     def upsert_staging(self, conn: psycopg.Connection[Any], raw_ids: list[int]) -> int:
         updated = 0
@@ -52,7 +102,8 @@ class TransfersPipeline(BasePipeline):
             payload: dict[str, Any] = row[1] if isinstance(row[1], dict) else json.loads(row[1])
             row_hash: str = row[2]
 
-            parcel_id: str | None = payload.get("parcel_number") or payload.get("parcel_id")
+            # opa_account_num is the OPA parcel number that core.properties is keyed on
+            parcel_id: str | None = payload.get("opa_account_num")
 
             existing = conn.execute(
                 "SELECT row_hash FROM staging.transfers WHERE document_id = %s",

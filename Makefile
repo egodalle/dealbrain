@@ -1,3 +1,7 @@
+# Load local settings (DATABASE_URL, POSTGRES_PASSWORD, ...) when .env exists.
+-include .env
+export
+
 .PHONY: up down lint test migrate ingest ingest-dry-run dedupe eval deploy deploy-status
 
 DATASET ?= philly
@@ -17,7 +21,8 @@ lint:
 	uv run mypy --strict .
 
 test:
-	docker compose up -d --wait db
+	@# CI provides Postgres as a service container; only start Compose locally.
+	@if [ -z "$$CI" ]; then docker compose up -d --wait db; fi
 	uv run pytest tests/unit/ -q $(if $(filter-out all,$(SUITE)),-k $(SUITE),)
 
 dedupe:
