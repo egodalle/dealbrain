@@ -9,12 +9,29 @@ services:
       - db-data:/var/lib/postgresql/data
       - ./db/init:/docker-entrypoint-initdb.d:ro
     ports:
-      - "5432:5432"
+      - "${TAILSCALE_IP:-127.0.0.1}:5432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U dealbrain"]
       interval: 5s
       timeout: 5s
       retries: 10
+
+  portal:
+    build:
+      context: ./apps/portal
+    ports:
+      - "${TAILSCALE_IP:-127.0.0.1}:8000:8000"
+    environment:
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    depends_on:
+      db:
+        condition: service_healthy
 
 volumes:
   db-data:
