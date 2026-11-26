@@ -112,7 +112,6 @@ dependencies = [
     { name = "httpx" },
     { name = "psycopg", extra = ["binary"] },
     { name = "rapidfuzz" },
-    { name = "respx" },
     { name = "usaddress" },
 ]
 
@@ -121,6 +120,7 @@ dev = [
     { name = "fastapi" },
     { name = "mypy" },
     { name = "pytest" },
+    { name = "respx" },
     { name = "ruff" },
     { name = "uvicorn" },
 ]
@@ -130,7 +130,6 @@ requires-dist = [
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.3.9" },
     { name = "rapidfuzz", specifier = ">=3.9" },
-    { name = "respx", specifier = ">=0.23.1" },
     { name = "usaddress", specifier = ">=0.5.10" },
 ]
 
@@ -139,6 +138,7 @@ dev = [
     { name = "fastapi", specifier = ">=0.165.0" },
     { name = "mypy", specifier = ">=2.4.1" },
     { name = "pytest", specifier = ">=9.2.0" },
+    { name = "respx", specifier = ">=0.23.1" },
     { name = "ruff", specifier = ">=0.17.6" },
     { name = "uvicorn", specifier = ">=0.54.0" },
 ]

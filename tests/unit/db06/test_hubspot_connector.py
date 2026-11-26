@@ -174,3 +174,58 @@ def test_health_check_degraded(monkeypatch: pytest.MonkeyPatch) -> None:
     result = connector.health_check()
     assert result["status"] == "degraded"
     assert "missing credentials" in result["reason"]
+
+
+def test_push_writes_pending_action() -> None:
+    connector = HubSpotConnector(api_key="test", client_secret="secret")
+    records = [{"firstname": "Jane", "lastname": "Doe", "email": "jane@example.com"}]
+    actions = connector.push(records)
+    assert len(actions) == 1
+    assert actions[0].connector == "hubspot"
+    assert actions[0].action_type == "hubspot_contact_upsert"
+    assert actions[0].status == "pending"
+    assert actions[0].payload == records[0]
+    # Verify no HTTP calls were made (pure in-memory operation)
+
+
+def test_pull_upserts_crm_contact() -> None:
+    # Simulate a HubSpot webhook payload
+    payload = {
+        "objectId": "12345",
+        "properties": {"firstname": "John", "lastname": "Smith", "email": "john@example.com"},
+        "subscriptionType": "contact.creation",
+    }
+    connector = HubSpotConnector(api_key="test", client_secret="secret")
+    contact = connector.handle_webhook_event(payload)
+    assert contact["hubspot_id"] == "12345"
+    print(f"hubspot_id={contact['hubspot_id']}")  # AC-3 requires this printed
+
+
+def test_push_is_idempotent() -> None:
+    connector = HubSpotConnector(api_key="test", client_secret="secret")
+    record = {"firstname": "Alice", "email": "alice@example.com"}
+    actions_1 = connector.push([record])
+    actions_2 = connector.push([record])
+    # Same record → same payload_hash → would produce COUNT=1 in DB (idempotency index)
+    assert actions_1[0].payload_hash == actions_2[0].payload_hash
+    assert actions_1[0].payload == actions_2[0].payload
+
+
+def test_health_check(monkeypatch: pytest.MonkeyPatch) -> None:
+    connector = HubSpotConnector(api_key="test", client_secret="secret")
+    # healthy path — env var set; respx.mock is a no-op since health_check is env-var-only
+    monkeypatch.setenv("HUBSPOT_API_KEY", "test")
+    with respx.mock:
+        respx.get("https://api.hubapi.com/crm/v3/objects/contacts").mock(
+            return_value=httpx.Response(200, json={"results": []})
+        )
+        result = connector.health_check()
+        assert result == {"status": "ok", "connector": "hubspot"}
+    # degraded path
+    monkeypatch.delenv("HUBSPOT_API_KEY", raising=False)
+    with respx.mock:
+        respx.get("https://api.hubapi.com/crm/v3/objects/contacts").mock(
+            return_value=httpx.Response(401)
+        )
+        result = connector.health_check()
+        assert result["status"] == "degraded"

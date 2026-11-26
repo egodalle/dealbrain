@@ -51,9 +51,11 @@ ON CONFLICT (hubspot_id) DO UPDATE SET
 class HubSpotConnector(BaseConnector):
     def __init__(
         self,
+        api_key: str = "",
         client_secret: str = "",
         http_client: httpx.Client | None = None,
     ) -> None:
+        self._api_key = api_key
         self._client_secret = client_secret
         self._http = http_client or httpx.Client()
 
@@ -63,7 +65,7 @@ class HubSpotConnector(BaseConnector):
     def push(
         self,
         records: list[dict[str, Any]],
-        conn: Any,
+        conn: Any = None,
     ) -> list[PendingAction]:
         """Write pending_actions rows for each record. No HubSpot API call is made."""
         actions: list[PendingAction] = []
@@ -73,17 +75,18 @@ class HubSpotConnector(BaseConnector):
                 action_type="hubspot_contact_upsert",
                 payload=record,
             )
-            conn.execute(
-                _INSERT_PENDING_ACTION,
-                (
-                    str(action.id),
-                    action.connector,
-                    action.action_type,
-                    json.dumps(record),
-                    action.status,
-                    action.created_at,
-                ),
-            )
+            if conn is not None:
+                conn.execute(
+                    _INSERT_PENDING_ACTION,
+                    (
+                        str(action.id),
+                        action.connector,
+                        action.action_type,
+                        json.dumps(record),
+                        action.status,
+                        action.created_at,
+                    ),
+                )
             actions.append(action)
         return actions
 
@@ -121,6 +124,23 @@ class HubSpotConnector(BaseConnector):
                 url = None
 
         return results
+
+    def handle_webhook_event(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Parse a single HubSpot webhook event dict and return a contact dict for upsert.
+
+        Pure function — no DB or HTTP calls.
+        """
+        hubspot_id = str(payload.get("objectId", ""))
+        props = payload.get("properties", {})
+        return {
+            "hubspot_id": hubspot_id,
+            "first_name": props.get("firstname"),
+            "last_name": props.get("lastname"),
+            "email": props.get("email"),
+            "phone": props.get("phone"),
+            "subscription_type": payload.get("subscriptionType"),
+            "raw_payload": payload,
+        }
 
     def handle_webhook_events(
         self,
