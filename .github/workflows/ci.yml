@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+        with:
+          python-version: "3.12"
+      - run: uv sync --frozen
+      - run: make lint
+
+  test:
+    runs-on: ubuntu-latest
+    services:
+      db:
+        image: pgvector/pgvector:0.7.4-pg16
+        env:
+          POSTGRES_DB: dealbrain
+          POSTGRES_USER: dealbrain
+          POSTGRES_PASSWORD: test
+        options: >-
+          --health-cmd "pg_isready -U dealbrain"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+        ports:
+          - 5432:5432
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+        with:
+          python-version: "3.12"
+      - run: uv sync --frozen
+      - run: make test
+        env:
+          DATABASE_URL: postgresql://dealbrain:test@localhost:5432/dealbrain
+          POSTGRES_PASSWORD: test
