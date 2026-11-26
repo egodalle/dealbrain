@@ -7,9 +7,9 @@ Owned by `product-owner`. These are seed stories from the 2-week plan. The PO ex
 | DB-01 | 1 | Repo layout, standards, CI, local Compose with pgvector | architect → data-engineer | `git clone && make up` works; CI green on first PR | ready |
 | DB-02 | 1 | VPS + Tailscale-only admin + hello-world portal deploy | data-engineer | Portal reachable over the tailnet; no public ports except the demo Funnel | todo |
 | DB-03 | 2 | Philly open-data ingestion (OPA, violations, transfers, delinquency) into raw → staging → core | data-engineer | 2nd run inserts 0 rows; 1 changed row updates exactly 1 | todo |
-| DB-04 | 3 | Address normalization + entity resolution + dedupe | data-engineer | Precision/recall on 200 labeled pairs reported | todo |
-| DB-05 | 3 | Explainable distress score + `/leads` data product with CSV export | data-engineer | Every score has a breakdown that sums to the total | todo |
-| DB-06 | 4 | Connector interface + HubSpot two-way sync | data-engineer | A HubSpot edit flows back into Postgres; fixture tests run in CI | todo |
+| DB-04 | 3 | Address normalization + entity resolution + dedupe | data-engineer | Precision/recall on 200 labeled pairs reported | done |
+| DB-05 | 3 | Explainable distress score + `/leads` data product with CSV export | data-engineer | Every score has a breakdown that sums to the total | done |
+| DB-06 | 4 | Connector interface + HubSpot two-way sync | data-engineer | A HubSpot edit flows back into Postgres; fixture tests run in CI | done |
 | DB-07 | 4 | Gmail + Calendar read, Twilio inbound SMS (signature verified) | data-engineer | An inbound SMS appears on the contact timeline; unsigned webhook gets 403 | todo |
 | DB-08 | 5 | Brain pages + GBrain on Postgres + golden-set eval | data-engineer + tester | recall@5 reported per GBrain search mode, 30 questions | todo |
 | DB-09 | 6 | LLM router (Anthropic, OpenAI/OpenRouter, Ollama over tailnet), budgets, `llm_calls` | data-engineer + tester | Route comparison table: quality, cost/100, p95 | todo |
