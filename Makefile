@@ -1,4 +1,6 @@
-.PHONY: up down lint test deploy deploy-status
+.PHONY: up down lint test migrate ingest ingest-dry-run deploy deploy-status
+
+DATASET ?= philly
 
 up:
 	docker compose up -d --wait
@@ -16,6 +18,15 @@ lint:
 test:
 	docker compose up -d --wait db
 	uv run pytest tests/unit/ -q
+
+migrate:
+	uv run python -m pipelines.migrate
+
+ingest:
+	docker compose up -d --wait db && uv run python -m pipelines.run --dataset $(DATASET)
+
+ingest-dry-run:
+	uv run python -m pipelines.run --dataset $(DATASET) --dry-run
 
 deploy:
 	@bash infra/deploy.sh

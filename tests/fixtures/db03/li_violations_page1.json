@@ -1,0 +1,22 @@
+[
+  {
+    "violationid": "V-00001",
+    "parcel_id_num": "001000000",
+    "address": "1 N BROAD ST",
+    "violationcode": "CP-002",
+    "violationdescription": "EXTERIOR PROPERTY",
+    "violationdate": "2023-01-10",
+    "caseopeneddate": "2023-01-10",
+    "casestatus": "OPEN"
+  },
+  {
+    "violationid": "V-00002",
+    "parcel_id_num": "002000000",
+    "address": "2 S BROAD ST",
+    "violationcode": "PM-102.6.3",
+    "violationdescription": "MISSING INTERIOR",
+    "violationdate": "2022-05-20",
+    "caseopeneddate": "2022-05-20",
+    "casestatus": "CLOSED"
+  }
+]

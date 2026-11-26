@@ -1,0 +1,18 @@
+[
+  {
+    "account_number": "ACC-00001",
+    "parcel_number": "001000000",
+    "owner": "SYNTHETIC OWNER A",
+    "total_due": "1500.00",
+    "num_years_owed": "2",
+    "lien_number": "LIEN-001"
+  },
+  {
+    "account_number": "ACC-00002",
+    "parcel_number": "003000000",
+    "owner": "SYNTHETIC OWNER C",
+    "total_due": "8200.50",
+    "num_years_owed": "5",
+    "lien_number": "LIEN-002"
+  }
+]
