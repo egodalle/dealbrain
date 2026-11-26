@@ -1,6 +1,7 @@
-.PHONY: up down lint test migrate ingest ingest-dry-run deploy deploy-status
+.PHONY: up down lint test migrate ingest ingest-dry-run dedupe eval deploy deploy-status
 
 DATASET ?= philly
+SUITE ?= all
 
 up:
 	docker compose up -d --wait
@@ -17,7 +18,14 @@ lint:
 
 test:
 	docker compose up -d --wait db
-	uv run pytest tests/unit/ -q
+	uv run pytest tests/unit/ -q $(if $(filter-out all,$(SUITE)),-k $(SUITE),)
+
+dedupe:
+	docker compose up -d --wait db
+	uv run python -m pipelines.dedupe
+
+eval:
+	uv run python evals/$(SUITE)/run_eval.py
 
 migrate:
 	uv run python -m pipelines.migrate

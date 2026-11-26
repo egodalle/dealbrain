@@ -1,0 +1,202 @@
+[
+  {
+    "parcel_id": "DB04-001",
+    "address_raw": "123 N BROAD ST",
+    "address_normalized": null,
+    "owner": null,
+    "owner_1": "SYNTHETIC OWNER ALPHA",
+    "owner_2": "",
+    "assessed_value": "250000",
+    "created_at": "2020-01-01T00:00:00Z"
+  },
+  {
+    "parcel_id": "DB04-002",
+    "address_raw": "123 N BROAD ST APT 2",
+    "address_normalized": null,
+    "owner": null,
+    "owner_1": "ALPHA SYNTHETIC OWNER",
+    "owner_2": "",
+    "assessed_value": "200000",
+    "created_at": "2020-01-02T00:00:00Z"
+  },
+  {
+    "parcel_id": "DB04-003",
+    "address_raw": "456 S OAK AVE",
+    "address_normalized": null,
+    "owner": null,
+    "owner_1": "SYNTHETIC OWNER BETA",
+    "owner_2": "",
+    "assessed_value": "180000",
+    "created_at": "2020-01-03T00:00:00Z"
+  },
+  {
+    "parcel_id": "DB04-004",
+    "address_raw": "456 S OAK AVE",
+    "address_normalized": null,
+    "owner": null,
+    "owner_1": "BETA SYNTHETIC OWNER LLC",
+    "owner_2": "",
+    "assessed_value": "190000",
+    "created_at": "2020-01-04T00:00:00Z"
+  },
+  {
+    "parcel_id": "DB04-005",
+    "address_raw": "789 W MAPLE BLVD",
+    "address_normalized": null,
+    "owner": null,
+    "owner_1": "SYNTHETIC OWNER GAMMA",
+    "owner_2": "",
+    "assessed_value": "320000",
+    "created_at": "2020-01-05T00:00:00Z"
+  },
+  {
+    "parcel_id": "DB04-006",
+    "address_raw": "789 W MAPLE BLVD",
+    "address_normalized": null,
+    "owner": null,
+    "owner_1": "GAMMA SYNTHETIC OWNER TRUST",
+    "owner_2": "",
+    "assessed_value": "310000",
+    "created_at": "2020-01-06T00:00:00Z"
+  },
+  {
+    "parcel_id": "DB04-007",
+    "address_raw": "1000 E PINE RD",
+    "address_normalized": null,
+    "owner": null,
+    "owner_1": "SYNTHETIC OWNER DELTA",
+    "owner_2": "",
+    "assessed_value": "150000",
+    "created_at": "2020-01-07T00:00:00Z"
+  },
+  {
+    "parcel_id": "DB04-008",
+    "address_raw": "1000 E PINE RD STE 10",
+    "address_normalized": null,
+    "owner": null,
+    "owner_1": "DELTA SYNTHETIC OWNER INC",
+    "owner_2": "",
+    "assessed_value": "160000",
+    "created_at": "2020-01-08T00:00:00Z"
+  },
+  {
+    "parcel_id": "DB04-009",
+    "address_raw": "200 CHERRY LN",
+    "address_normalized": null,
+    "owner": null,
+    "owner_1": "SYNTHETIC OWNER EPSILON",
+    "owner_2": "",
+    "assessed_value": "275000",
+    "created_at": "2020-01-09T00:00:00Z"
+  },
+  {
+    "parcel_id": "DB04-010",
+    "address_raw": "200 CHERRY LANE",
+    "address_normalized": null,
+    "owner": null,
+    "owner_1": "EPSILON SYNTHETIC OWNER",
+    "owner_2": "",
+    "assessed_value": "280000",
+    "created_at": "2020-01-10T00:00:00Z"
+  },
+  {
+    "parcel_id": "DB04-011",
+    "address_raw": "300 COURT ST APT 5",
+    "address_normalized": null,
+    "owner": null,
+    "owner_1": "SYNTHETIC OWNER ZETA",
+    "owner_2": "",
+    "assessed_value": "120000",
+    "created_at": "2020-01-11T00:00:00Z"
+  },
+  {
+    "parcel_id": "DB04-012",
+    "address_raw": "400 DRIVE CT",
+    "address_normalized": null,
+    "owner": null,
+    "owner_1": "SYNTHETIC OWNER ETA",
+    "owner_2": "",
+    "assessed_value": "195000",
+    "created_at": "2020-01-12T00:00:00Z"
+  },
+  {
+    "parcel_id": "DB04-013",
+    "address_raw": "500 N TERRACE PLACE FL 2",
+    "address_normalized": null,
+    "owner": null,
+    "owner_1": "SYNTHETIC OWNER THETA",
+    "owner_2": "",
+    "assessed_value": "340000",
+    "created_at": "2020-01-13T00:00:00Z"
+  },
+  {
+    "parcel_id": "DB04-014",
+    "address_raw": "600 W CENTRAL BLVD",
+    "address_normalized": null,
+    "owner": null,
+    "owner_1": "SYNTHETIC OWNER IOTA",
+    "owner_2": "",
+    "assessed_value": "210000",
+    "created_at": "2020-01-14T00:00:00Z"
+  },
+  {
+    "parcel_id": "DB04-015",
+    "address_raw": "700 E MARKET ST",
+    "address_normalized": null,
+    "owner": null,
+    "owner_1": "SYNTHETIC OWNER KAPPA",
+    "owner_2": "",
+    "assessed_value": "290000",
+    "created_at": "2020-01-15T00:00:00Z"
+  },
+  {
+    "parcel_id": "DB04-016",
+    "address_raw": "800 S RIDGE AVE",
+    "address_normalized": null,
+    "owner": null,
+    "owner_1": "SYNTHETIC OWNER LAMBDA",
+    "owner_2": "",
+    "assessed_value": "175000",
+    "created_at": "2020-01-16T00:00:00Z"
+  },
+  {
+    "parcel_id": "DB04-017",
+    "address_raw": "900 N GROVE DR",
+    "address_normalized": null,
+    "owner": null,
+    "owner_1": "SYNTHETIC OWNER MU",
+    "owner_2": "",
+    "assessed_value": "230000",
+    "created_at": "2020-01-17T00:00:00Z"
+  },
+  {
+    "parcel_id": "DB04-018",
+    "address_raw": "1100 W SPRING LN",
+    "address_normalized": null,
+    "owner": null,
+    "owner_1": "SYNTHETIC OWNER NU",
+    "owner_2": "",
+    "assessed_value": "185000",
+    "created_at": "2020-01-18T00:00:00Z"
+  },
+  {
+    "parcel_id": "DB04-019",
+    "address_raw": "1200 E SUMMIT RD",
+    "address_normalized": null,
+    "owner": null,
+    "owner_1": "SYNTHETIC OWNER XI",
+    "owner_2": "",
+    "assessed_value": "265000",
+    "created_at": "2020-01-19T00:00:00Z"
+  },
+  {
+    "parcel_id": "DB04-020",
+    "address_raw": "1300 S VALLEY BLVD",
+    "address_normalized": null,
+    "owner": null,
+    "owner_1": "SYNTHETIC OWNER OMICRON",
+    "owner_2": "",
+    "assessed_value": "220000",
+    "created_at": "2020-01-20T00:00:00Z"
+  }
+]

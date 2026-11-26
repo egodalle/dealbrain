@@ -5,6 +5,8 @@ requires-python = ">=3.12,<3.13"
 dependencies = [
     "httpx>=0.28.1",
     "psycopg[binary]>=3.3.9",
+    "rapidfuzz>=3.9",
+    "usaddress>=0.5.10",
 ]
 
 [tool.ruff]
@@ -19,6 +21,10 @@ select = ["E", "F", "I", "UP"]
 python_version = "3.12"
 strict = true
 exclude = ["apps/portal/"]
+
+[[tool.mypy.overrides]]
+module = ["usaddress"]
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
