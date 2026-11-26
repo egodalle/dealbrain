@@ -1,20 +1,26 @@
-"""Tax delinquency pipeline: raw.delinquency → staging.delinquency."""
+"""Tax delinquency pipeline: raw.delinquency → staging.delinquency.
+
+BLOCKED: no property-level delinquency table has been confirmed on Philadelphia's Carto
+API. The city's current Real Estate Tax Balances release is aggregated by ZIP code,
+council district and census tract. Until a parcel-level source is confirmed, this
+pipeline fails fast and is excluded from `--dataset philly`.
+"""
 
 from __future__ import annotations
 
 import json
 import logging
-import os
-from dataclasses import dataclass, field
+from collections.abc import Iterator
+from dataclasses import dataclass
 from typing import Any
 
 import psycopg
 
-from pipelines.base import BasePipeline
+from pipelines.base import PAGE_SIZE, BasePipeline
 
 logger = logging.getLogger(__name__)
 
-_DEFAULT_URL = "https://data.phila.gov/resource/dknd-xqk9.json"
+BLOCKED_REASON = "blocked: no property-level tax delinquency table confirmed on phl.carto.com"
 
 
 def _safe_numeric(val: Any) -> str | None:
@@ -35,12 +41,14 @@ def _safe_int(val: Any) -> int | None:
 @dataclass
 class DelinquencyPipeline(BasePipeline):
     dataset: str = "delinquency"
-    socrata_url: str = field(
-        default_factory=lambda: os.environ.get("PHILLY_DELINQUENCY_URL", _DEFAULT_URL)
-    )
     source_id_field: str = "account_number"
     raw_table: str = "raw.delinquency"
     staging_table: str = "staging.delinquency"
+
+    def fetch_pages(
+        self, offset: int = 0, limit: int = PAGE_SIZE
+    ) -> Iterator[list[dict[str, Any]]]:
+        raise RuntimeError(BLOCKED_REASON)
 
     def upsert_staging(self, conn: psycopg.Connection[Any], raw_ids: list[int]) -> int:
         updated = 0

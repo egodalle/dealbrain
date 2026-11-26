@@ -148,3 +148,69 @@ uv run pytest tests/unit/ -q
 
 - Acceptance tests (DB integration, docker) are the Tester's responsibility (design.md section 6).
 - `python-dotenv` not added (see deviations section).
+
+---
+
+## Fix (2026-11-26): switch to the Carto SQL API
+
+**Why:** the first manual run returned HTTP 403 for all four sources and loaded 0 rows. The
+extractors called Socrata-style URLs (`data.phila.gov/resource/*.json`) that don't serve this
+data. The Tester's live-data checks (AC-1 to AC-5, AC-7) had been skipped, so this wasn't caught.
+
+**What changed**
+- `pipelines/base.py`: fetches from `https://phl.carto.com/api/v2/sql` (override with `CARTO_SQL_URL`),
+  `SELECT <columns> FROM <table> WHERE <filter> ORDER BY cartodb_id LIMIT/OFFSET`. Parses Carto's
+  `{"rows": [...]}` envelope and its `{"error": ...}` body. 4xx responses other than 429 now fail
+  immediately (`SourceHTTPError`) instead of retrying for about 15 seconds. New `prepare(conn)` hook.
+- Scope is set by env: `PHILLY_ZIPS` (default `19134`) and `PHILLY_SINCE` (default `2023-01-01`),
+  both validated before going into SQL.
+- `opa.py`: table `opa_properties_public`, filtered by ZIP. Also keeps `mailing_*`, `year_built`,
+  `total_livable_area` and `zoning` in raw for DB-05 (absentee owner).
+- `violations.py`: table `violations`, key `violationnumber`, filtered by ZIP and `violationdate`.
+  **Bug fixed:** the parcel link now reads `opa_account_num`. Before, it read
+  `parcel_id_num`/`parcel_number`, which wouldn't have matched `core.properties`.
+- `transfers.py`: table `rtt_summary`, deeds only. ZIP and date scans on this table failed through
+  the web check, so it now looks up `opa_account_num IN (...)` (indexed) in batches of 150 parcels
+  taken from `core.properties`. OPA must run first; `run.py` orders it that way.
+  **Bug fixed:** same `opa_account_num` parcel-link issue as violations.
+- `delinquency.py`: **blocked**. No parcel-level table is confirmed on Carto (the city's current
+  release is aggregated by ZIP, council district and tract). It fails fast and is left out of
+  `--dataset philly`.
+- `Makefile`: `-include .env` + `export`, so `make migrate`/`make ingest` see `DATABASE_URL`.
+  `make test` only starts Compose when `CI` isn't set, which fixes the CI port 5432 clash.
+- `docker-compose.yml`: portal on `${PORTAL_PORT:-8010}`, because Airbyte uses 8000.
+- `.env.example`: `PORTAL_PORT`, `PHILLY_ZIPS`, `PHILLY_SINCE`.
+- Tests: `tests/unit/test_carto_fetch.py` (10 tests: envelope, query shape, ZIP/date filters,
+  403 fail-fast, Carto error body, 429 retry, input validation, transfer batching).
+
+**Checked:** ruff check + format, mypy --strict, `pytest tests/unit` → 72 passed.
+Live counts through the Carto API: OPA in 19134 = 25,755 parcels; violations in 19134 since
+2023-01-01 = 21,142. The transfers query couldn't be checked live from here.
+
+**Still to verify on a real run (the DB-03 acceptance criteria):** `make migrate && make ingest`
+twice. The first run loads rows, the second inserts 0, and `core.properties` has ≥ 1000 rows with
+no null parcel numbers.
+
+### Fix 2 (same day): first real run results and follow-ups
+
+First real run: `opa` 25,755 fetched and inserted (0 null parcel numbers in `core.properties`);
+`violations` 21,142 (21,043 linked to a parcel, 99.5%); `transfers` failed at 1,236 rows with
+Carto `HTTP 400 {"error":["query_wait_timeout"]}`. The second run hit the same error on the
+first request of every source.
+
+- **Retry Carto's temporary 400s.** `query_wait_timeout` and "over platform's limits" are now
+  retried with 3/10/30/60s backoff. Other 4xx still fail fast. There's a 0.2s pause between pages
+  (`CARTO_REQUEST_GAP`).
+- **Bug fixed: rows stranded in raw.** Staging only processed rows inserted in the current run.
+  The failed transfers run committed 1,232 raw rows, then never staged them, and later runs saw
+  "0 new" and skipped staging forever. `run()` now stages everything returned by
+  `pending_raw_ids()` (raw rows whose hash is in neither staging nor `<staging>_history`), and it
+  does so even when the fetch failed partway.
+- **Faster:** removed the extra SELECT per inserted raw row.
+- **Quieter:** `httpx` logging set to WARNING; one log line per page; the summary has a `staged`
+  column.
+- Tests: retry on `query_wait_timeout`; staging catches up after a failed fetch. 74 passing.
+
+**Test gap for the Tester:** the existing "idempotency" and "changed row" unit tests use a
+hand-written stand-in for the database and never call `run()`. Idempotency against real Postgres
+is still unproven until the acceptance run below passes.

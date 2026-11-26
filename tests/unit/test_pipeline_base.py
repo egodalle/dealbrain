@@ -25,7 +25,7 @@ _STUB_URL = "https://stub.example.com/resource/stub.json"
 
 class _StubPipeline(BasePipeline):
     dataset: str = field(default="stub")
-    socrata_url: str = field(default=_STUB_URL)
+    source_url: str = field(default=_STUB_URL)
     source_id_field: str = field(default="parcel_number")
     raw_table: str = field(default="raw.opa_assessments")
     staging_table: str = field(default="staging.opa_properties")
@@ -41,7 +41,7 @@ def _stub() -> _StubPipeline:
     """Return a stub pipeline with correct defaults."""
     return _StubPipeline(
         dataset="stub",
-        socrata_url=_STUB_URL,
+        source_url=_STUB_URL,
         source_id_field="parcel_number",
         raw_table="raw.opa_assessments",
         staging_table="staging.opa_properties",
@@ -51,7 +51,7 @@ def _stub() -> _StubPipeline:
 def _stub_with_transport(transport: httpx.MockTransport) -> _StubPipeline:
     return _StubPipeline(
         dataset="stub",
-        socrata_url=_STUB_URL,
+        source_url=_STUB_URL,
         source_id_field="parcel_number",
         raw_table="raw.opa_assessments",
         staging_table="staging.opa_properties",

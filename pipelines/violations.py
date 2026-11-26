@@ -4,17 +4,29 @@ from __future__ import annotations
 
 import json
 import logging
-import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 import psycopg
 
-from pipelines.base import BasePipeline
+from pipelines.base import BasePipeline, philly_since, philly_zips, sql_in
 
 logger = logging.getLogger(__name__)
 
-_DEFAULT_URL = "https://data.phila.gov/resource/t2h5-k7ba.json"
+_COLUMNS = (
+    "violationnumber",
+    "casenumber",
+    "opa_account_num",
+    "address",
+    "zip",
+    "violationcode",
+    "violationcodetitle",
+    "violationstatus",
+    "violationdate",
+    "casecreateddate",
+    "casestatus",
+    "caseprioritydesc",
+)
 
 
 def _safe_date(val: Any) -> str | None:
@@ -26,12 +38,14 @@ def _safe_date(val: Any) -> str | None:
 @dataclass
 class ViolationsPipeline(BasePipeline):
     dataset: str = "violations"
-    socrata_url: str = field(
-        default_factory=lambda: os.environ.get("PHILLY_VIOLATIONS_URL", _DEFAULT_URL)
-    )
-    source_id_field: str = "violationid"
+    carto_table: str = "violations"
+    carto_columns: tuple[str, ...] = _COLUMNS
+    source_id_field: str = "violationnumber"
     raw_table: str = "raw.violations"
     staging_table: str = "staging.violations"
+
+    def carto_where(self) -> str:
+        return f"left(zip, 5) IN ({sql_in(philly_zips())}) AND violationdate >= '{philly_since()}'"
 
     def upsert_staging(self, conn: psycopg.Connection[Any], raw_ids: list[int]) -> int:
         updated = 0
@@ -46,7 +60,8 @@ class ViolationsPipeline(BasePipeline):
             payload: dict[str, Any] = row[1] if isinstance(row[1], dict) else json.loads(row[1])
             row_hash: str = row[2]
 
-            parcel_id: str | None = payload.get("parcel_id_num") or payload.get("parcel_number")
+            # opa_account_num is the OPA parcel number that core.properties is keyed on
+            parcel_id: str | None = payload.get("opa_account_num")
 
             existing = conn.execute(
                 "SELECT row_hash, _updated_at FROM staging.violations WHERE violation_id = %s",
@@ -95,9 +110,9 @@ class ViolationsPipeline(BasePipeline):
                     row_hash,
                     payload.get("address"),
                     payload.get("violationcode") or payload.get("violation_code"),
-                    payload.get("violationdescription") or payload.get("violation_desc"),
+                    payload.get("violationcodetitle"),
                     _safe_date(payload.get("violationdate") or payload.get("violation_date")),
-                    _safe_date(payload.get("caseopeneddate") or payload.get("case_opened_date")),
+                    _safe_date(payload.get("casecreateddate")),
                     payload.get("casestatus") or payload.get("case_status"),
                 ),
             )

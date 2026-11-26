@@ -1,4 +1,4 @@
-"""Entry point: run all four Philly ingestion pipelines (or a named subset)."""
+"""Entry point: run the Philly ingestion pipelines (or a named one)."""
 
 from __future__ import annotations
 
@@ -17,6 +17,7 @@ from pipelines.transfers import TransfersPipeline
 from pipelines.violations import ViolationsPipeline
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s — %(message)s")
+logging.getLogger("httpx").setLevel(logging.WARNING)  # one line per request is noise
 logger = logging.getLogger(__name__)
 
 _ALL_PIPELINES: dict[str, type[BasePipeline]] = {
@@ -27,9 +28,14 @@ _ALL_PIPELINES: dict[str, type[BasePipeline]] = {
 }
 
 
+# Run order matters: OPA first, because it populates core.properties.
+# Delinquency is blocked (see pipelines/delinquency.py) and only runs when named.
+_DEFAULT_SET = ("opa", "violations", "transfers")
+
+
 def _build_pipelines(dataset: str) -> list[BasePipeline]:
     if dataset in ("philly", "all"):
-        return [cls() for cls in _ALL_PIPELINES.values()]
+        return [_ALL_PIPELINES[name]() for name in _DEFAULT_SET]
     if dataset in _ALL_PIPELINES:
         return [_ALL_PIPELINES[dataset]()]
     logger.error("Unknown dataset: %s", dataset)
@@ -37,13 +43,13 @@ def _build_pipelines(dataset: str) -> list[BasePipeline]:
 
 
 def _print_summary(results: list[IngestResult]) -> None:
-    header = f"{'dataset':<15} {'fetched':>8} {'inserted':>9} {'elapsed':>9}  status"
+    header = f"{'dataset':<15} {'fetched':>8} {'inserted':>9} {'staged':>7} {'elapsed':>9}  status"
     print(header)
     print("-" * len(header))
     for r in results:
         status = "skipped" if r.skipped else ("error" if r.error else "ok")
         print(
-            f"{r.dataset:<15} {r.rows_fetched:>8} {r.rows_inserted:>9} "
+            f"{r.dataset:<15} {r.rows_fetched:>8} {r.rows_inserted:>9} {r.rows_updated_staging:>7} "
             f"{r.elapsed_seconds:>8.1f}s  {status}"
         )
 
@@ -54,7 +60,7 @@ def main(argv: list[str] | None = None) -> int:
         "--dataset",
         default="philly",
         choices=list(_ALL_PIPELINES.keys()) + ["philly", "all"],
-        help="Which dataset to ingest (default: philly = all four)",
+        help="Which dataset to ingest (default: philly = opa, violations, transfers)",
     )
     parser.add_argument(
         "--dry-run",

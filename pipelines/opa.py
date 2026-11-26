@@ -4,17 +4,40 @@ from __future__ import annotations
 
 import json
 import logging
-import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 import psycopg
 
-from pipelines.base import BasePipeline
+from pipelines.base import BasePipeline, philly_zips, sql_in
 
 logger = logging.getLogger(__name__)
 
-_DEFAULT_URL = "https://data.phila.gov/resource/w7rb-qrn8.json"
+_COLUMNS = (
+    "parcel_number",
+    "location",
+    "unit",
+    "zip_code",
+    "owner_1",
+    "owner_2",
+    "mailing_street",
+    "mailing_city_state",
+    "mailing_zip",
+    "building_code",
+    "building_code_description",
+    "category_code",
+    "category_code_description",
+    "market_value",
+    "sale_date",
+    "sale_price",
+    "taxable_land",
+    "taxable_building",
+    "exempt_land",
+    "exempt_building",
+    "year_built",
+    "total_livable_area",
+    "zoning",
+)
 
 
 def _safe_numeric(val: Any) -> str | None:
@@ -27,7 +50,7 @@ def _safe_numeric(val: Any) -> str | None:
 def _safe_date(val: Any) -> str | None:
     if not val:
         return None
-    # Socrata returns ISO date strings; take the date part only
+    # Carto returns ISO timestamps (2020-01-15T00:00:00Z); keep the date part only
     return str(val)[:10]
 
 
@@ -41,10 +64,14 @@ def require_parcel_id(parcel_number: Any) -> str:
 @dataclass
 class OPAPipeline(BasePipeline):
     dataset: str = "opa"
-    socrata_url: str = field(default_factory=lambda: os.environ.get("PHILLY_OPA_URL", _DEFAULT_URL))
+    carto_table: str = "opa_properties_public"
+    carto_columns: tuple[str, ...] = _COLUMNS
     source_id_field: str = "parcel_number"
     raw_table: str = "raw.opa_assessments"
     staging_table: str = "staging.opa_properties"
+
+    def carto_where(self) -> str:
+        return f"left(zip_code, 5) IN ({sql_in(philly_zips())})"
 
     def upsert_staging(self, conn: psycopg.Connection[Any], raw_ids: list[int]) -> int:
         updated = 0
