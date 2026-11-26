@@ -129,7 +129,7 @@ class BasePipeline:
     def log_run(
         self,
         conn: psycopg.Connection[Any],
-        source: str,
+        dataset: str,
         rows_fetched: int,
         rows_inserted: int,
         run_id: str | None = None,
@@ -139,12 +139,12 @@ class BasePipeline:
         if run_id is None:
             row = conn.execute(
                 """
-                INSERT INTO raw.ingest_log (source, rows_fetched, rows_inserted, status, error,
+                INSERT INTO raw.ingest_log (dataset, rows_fetched, rows_inserted, status, error,
                                             finished_at)
                 VALUES (%s, %s, %s, %s, %s, now())
                 RETURNING run_id
                 """,
-                (source, rows_fetched, rows_inserted, "done" if error is None else "error", error),
+                (dataset, rows_fetched, rows_inserted, "done" if error is None else "error", error),
             ).fetchone()
             assert row is not None
             return str(row[0])
@@ -183,7 +183,7 @@ class BasePipeline:
 
         # Open ingest_log row immediately
         log_row = conn.execute(
-            "INSERT INTO raw.ingest_log (source) VALUES (%s) RETURNING run_id",
+            "INSERT INTO raw.ingest_log (dataset) VALUES (%s) RETURNING run_id",
             (self.dataset,),
         ).fetchone()
         assert log_row is not None
@@ -197,41 +197,35 @@ class BasePipeline:
         error_msg: str | None = None
 
         try:
-            all_records: list[dict[str, Any]] = []
-            for page in self.fetch_pages():
-                all_records.extend(page)
-
-            rows_fetched = len(all_records)
-
             if not dry_run:
-                for record in all_records:
-                    sid = record.get(self.source_id_field)
-                    if not sid:
-                        logger.warning(
-                            "[%s] record missing source_id field '%s' — skipping",
-                            self.dataset,
-                            self.source_id_field,
+                for page in self.fetch_pages():
+                    rows_fetched += len(page)
+                    for record in page:
+                        sid = record.get(self.source_id_field)
+                        if not sid:
+                            logger.warning(
+                                "[%s] record missing source_id field '%s' — skipping",
+                                self.dataset,
+                                self.source_id_field,
+                            )
+                            continue
+                        row_hash = self.compute_hash(record)
+                        inserted = self.upsert_raw(
+                            conn, self.raw_table, str(sid), row_hash, record, run_id
                         )
-                        continue
-                    row_hash = self.compute_hash(record)
-                    inserted = self.upsert_raw(
-                        conn, self.raw_table, str(sid), row_hash, record, run_id
-                    )
-                    if inserted:
-                        rows_inserted += 1
-                        # retrieve the id we just inserted
-                        # noqa: S608 — table name is a trusted class attribute
-                        raw_sel = (
-                            f"SELECT id FROM {self.raw_table}"  # noqa: S608
-                            " WHERE source_id = %s AND row_hash = %s"
-                        )
-                        row = conn.execute(
-                            raw_sel,
-                            (str(sid), row_hash),
-                        ).fetchone()
-                        if row:
-                            raw_ids.append(int(row[0]))
-                conn.commit()
+                        if inserted:
+                            rows_inserted += 1
+                            raw_sel = (
+                                f"SELECT id FROM {self.raw_table}"  # noqa: S608
+                                " WHERE source_id = %s AND row_hash = %s"
+                            )
+                            row = conn.execute(
+                                raw_sel,
+                                (str(sid), row_hash),
+                            ).fetchone()
+                            if row:
+                                raw_ids.append(int(row[0]))
+                    conn.commit()
 
                 if rows_inserted == 0:
                     logger.info("[%s] No new rows — skipped staging upsert", self.dataset)
@@ -241,6 +235,8 @@ class BasePipeline:
                     self.upsert_core(conn)
                     conn.commit()
             else:
+                for page in self.fetch_pages():
+                    rows_fetched += len(page)
                 logger.info("[%s] dry-run: fetched %d rows, no writes", self.dataset, rows_fetched)
                 skipped = True
 

@@ -1,6 +1,6 @@
 BEGIN;
 
-CREATE TABLE staging.opa_assessments (
+CREATE TABLE staging.opa_properties (
     parcel_id                  TEXT PRIMARY KEY,
     raw_id                     BIGINT NOT NULL,
     row_hash                   TEXT NOT NULL,
@@ -24,7 +24,7 @@ CREATE TABLE staging.opa_assessments (
     _updated_at                TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE TABLE staging.opa_assessments_history (
+CREATE TABLE staging.opa_properties_history (
     history_id  BIGSERIAL PRIMARY KEY,
     parcel_id                  TEXT NOT NULL,
     raw_id                     BIGINT NOT NULL,

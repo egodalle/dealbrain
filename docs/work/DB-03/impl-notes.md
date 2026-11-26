@@ -1,7 +1,7 @@
 ---
 owner: data-engineer
 last-reviewed: 2026-11-26
-stability: draft
+stability: stable
 ---
 
 # DB-03 Implementation Notes
@@ -29,6 +29,7 @@ Migrations start at 0001 (directory was empty; design.md assumed DB-01 ended at 
 | `0009_staging_transfers.sql` | `staging.transfers` + `staging.transfers_history` |
 | `0010_staging_delinquency.sql` | `staging.delinquency` + `staging.delinquency_history` |
 | `0011_core_properties.sql` | `core.properties` |
+| `0012_raw_table_counts_view.sql` | `raw.table_counts` view |
 
 No `raw.table_counts` view migration was added — design.md lists it as `0017_raw_table_counts_view.sql` but the task instructions only listed migrations through `0011`. The view is a convenience for acceptance testing; the tester can add it or query tables directly.
 
@@ -62,11 +63,11 @@ No `raw.table_counts` view migration was added — design.md lists it as `0017_r
 
 1. **Migration numbering:** design.md assumed migrations start at 0004 (after a DB-01 ending at 0003). The migrations directory was empty, so migrations start at 0001 per task instructions.
 
-2. **`raw.ingest_log` column `source` vs `dataset`:** design.md uses `dataset TEXT NOT NULL` in `raw.ingest_log`. The task prompt spec says `source TEXT NOT NULL`. Implementation uses `source` to match the task prompt; the pipeline's `BasePipeline.dataset` attribute is passed as the `source` value. The tester's AC-2 query uses `dataset` as a column alias — the actual column is `source`.
+2. **`raw.ingest_log` column `source` vs `dataset` — RESOLVED:** Column renamed to `dataset` to match design.md. All Python references updated.
 
 3. **`core.properties` column `address_raw` vs `parcel_number`:** design.md uses `parcel_id` as PK (normalized from `parcel_number`). Task prompt spec says `parcel_number TEXT PRIMARY KEY`. Implementation follows design.md (parcel_id PK) and also stores `parcel_number` as an alias column, plus `address_raw NOT NULL` to satisfy the design spec. The story's AC-4 open question (address_normalized vs address_raw) is documented in design.md — tester should verify against `address_raw`, not `address_normalized`.
 
-4. **No `raw.table_counts` view:** Not in the 0001–0011 range specified by the task prompt. Tester can create it inline or query tables directly for AC-1.
+4. **No `raw.table_counts` view — RESOLVED:** Added as `0012_raw_table_counts_view.sql`.
 
 5. **`BasePipeline` dataclass fields have default empty strings:** Required to satisfy mypy strict mode when subclasses override field values via class-level `field(default=...)` syntax. The `__post_init__` guard was removed in favour of explicit construction in tests and the actual pipeline classes.
 
@@ -105,31 +106,45 @@ uv run mypy --strict .
 Success: no issues found in 11 source files
 ```
 
-### `make test` (unit tests only, no docker)
+### `make test` (after B1/B2/B3/N1 fixes)
 
 ```
-$ uv run pytest tests/unit/ -v
-============================= test session starts ==============================
-platform darwin -- Python 3.12.16, pytest-9.2.0, pluggy-1.7.0
-collected 8 items
-
-tests/unit/test_pipeline_base.py::test_compute_hash_deterministic PASSED
-tests/unit/test_pipeline_base.py::test_compute_hash_different PASSED
-tests/unit/test_pipeline_base.py::test_compute_hash_key_order_independent PASSED
-tests/unit/test_pipeline_base.py::test_idempotency_fixture PASSED
-tests/unit/test_pipeline_base.py::test_changed_row_fixture PASSED
-tests/unit/test_pipeline_base.py::test_fetch_pages_paginates PASSED
-tests/unit/test_pipeline_base.py::test_fetch_pages_stops_on_empty PASSED
-tests/unit/test_placeholder.py::test_ok PASSED
-
-8 passed in 0.12s
+$ make test
+docker compose up -d --wait db
+ Container dealbrain-db-1  Running
+ Container dealbrain-db-1  Waiting
+ Container dealbrain-db-1  Healthy
+uv run pytest tests/unit/ -q
+..........                                                               [100%]
+10 passed in 0.14s
 ```
+
+---
+
+## Fixes applied after architect review (2026-11-26)
+
+### B1 — `source` → `dataset` in `raw.ingest_log`
+- `db/migrations/0006_raw_ingest_log.sql`: renamed column `source` to `dataset`.
+- `pipelines/base.py`: renamed `log_run` parameter `source` → `dataset`; updated the two INSERT SQL strings that referenced `source` to use `dataset`.
+
+### B2 — `staging.opa_assessments` → `staging.opa_properties`
+- `db/migrations/0007_staging_opa.sql`: renamed `staging.opa_assessments` and `staging.opa_assessments_history` to `staging.opa_properties` and `staging.opa_properties_history`.
+- `pipelines/opa.py`: updated `staging_table` attribute and all SQL strings to use `staging.opa_properties` / `staging.opa_properties_history`.
+- `tests/unit/test_pipeline_base.py`: updated the `_StubPipeline` default and constructor calls from `staging.opa_assessments` to `staging.opa_properties`.
+
+### B3 — Null parcel_id rejection guard + test
+- `pipelines/opa.py`: added `require_parcel_id()` function that raises `ValueError` for `None` or empty string; called at the top of `upsert_staging` where `parcel_id` is assigned.
+- `tests/unit/test_pipeline_base.py`: added `test_null_parcel_id_rejected` and `test_valid_parcel_id_passes` covering both rejection and pass-through paths.
+
+### N1 — `raw.table_counts` view
+- Added `db/migrations/0012_raw_table_counts_view.sql` with the `CREATE OR REPLACE VIEW raw.table_counts` as specified in the design.
+
+### OOM nit — per-page processing in `run()`
+- `pipelines/base.py`: rewrote `run()` to process and commit each page immediately rather than collecting all pages into `all_records` before writing. The dry_run path also now counts rows per-page.
 
 ---
 
 ## Known gaps
 
 - Acceptance tests (DB integration, docker) are the Tester's responsibility (design.md section 6).
-- No `raw.table_counts` view migration; tester needs to verify AC-1 by querying tables directly or adding the view.
-- `staging.opa_assessments` vs `staging.opa_properties`: design.md uses `opa_properties`; task prompt specifies `opa_assessments` to match the raw table name. Implementation follows the task prompt. The tester's AC-3 query uses `staging.opa_properties` — this is a name mismatch that the tester or PO should resolve.
-- `python-dotenv` not added (see deviations).
+- `python-dotenv` not added (see deviations section).

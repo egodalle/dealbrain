@@ -1,4 +1,4 @@
-"""OPA assessments pipeline: raw.opa_assessments → staging.opa_assessments → core.properties."""
+"""OPA assessments pipeline: raw.opa_assessments → staging.opa_properties → core.properties."""
 
 from __future__ import annotations
 
@@ -31,13 +31,20 @@ def _safe_date(val: Any) -> str | None:
     return str(val)[:10]
 
 
+def require_parcel_id(parcel_number: Any) -> str:
+    """Raise ValueError if parcel_number is None or empty; return it as str otherwise."""
+    if parcel_number is None or str(parcel_number).strip() == "":
+        raise ValueError(f"parcel_number must not be null or empty, got {parcel_number!r}")
+    return str(parcel_number)
+
+
 @dataclass
 class OPAPipeline(BasePipeline):
     dataset: str = "opa"
     socrata_url: str = field(default_factory=lambda: os.environ.get("PHILLY_OPA_URL", _DEFAULT_URL))
     source_id_field: str = "parcel_number"
     raw_table: str = "raw.opa_assessments"
-    staging_table: str = "staging.opa_assessments"
+    staging_table: str = "staging.opa_properties"
 
     def upsert_staging(self, conn: psycopg.Connection[Any], raw_ids: list[int]) -> int:
         updated = 0
@@ -48,7 +55,7 @@ class OPAPipeline(BasePipeline):
             ).fetchone()
             if row is None:
                 continue
-            parcel_id: str = row[0]
+            parcel_id: str = require_parcel_id(row[0])
             payload: dict[str, Any] = row[1] if isinstance(row[1], dict) else json.loads(row[1])
             row_hash_row = conn.execute(
                 "SELECT row_hash FROM raw.opa_assessments WHERE id = %s",
@@ -57,7 +64,7 @@ class OPAPipeline(BasePipeline):
             row_hash = row_hash_row[0] if row_hash_row else ""
 
             existing = conn.execute(
-                "SELECT row_hash, _updated_at FROM staging.opa_assessments WHERE parcel_id = %s",
+                "SELECT row_hash, _updated_at FROM staging.opa_properties WHERE parcel_id = %s",
                 (parcel_id,),
             ).fetchone()
 
@@ -65,7 +72,7 @@ class OPAPipeline(BasePipeline):
                 # Archive current version to history
                 conn.execute(
                     """
-                    INSERT INTO staging.opa_assessments_history
+                    INSERT INTO staging.opa_properties_history
                         (parcel_id, raw_id, row_hash, location, unit, zip_code,
                          owner_1, owner_2, building_code, building_code_description,
                          category_code, category_code_description, market_value,
@@ -78,7 +85,7 @@ class OPAPipeline(BasePipeline):
                            sale_date, sale_price, taxable_land, taxable_building,
                            exempt_land, exempt_building, _created_at, _updated_at,
                            _updated_at, now()
-                    FROM staging.opa_assessments
+                    FROM staging.opa_properties
                     WHERE parcel_id = %s
                     """,
                     (parcel_id,),
@@ -86,7 +93,7 @@ class OPAPipeline(BasePipeline):
 
             conn.execute(
                 """
-                INSERT INTO staging.opa_assessments
+                INSERT INTO staging.opa_properties
                     (parcel_id, raw_id, row_hash, location, unit, zip_code,
                      owner_1, owner_2, building_code, building_code_description,
                      category_code, category_code_description, market_value,
@@ -164,7 +171,7 @@ class OPAPipeline(BasePipeline):
                 s._updated_at,
                 s.raw_id,
                 now()
-            FROM staging.opa_assessments s
+            FROM staging.opa_properties s
             ON CONFLICT (parcel_id) DO UPDATE SET
                 parcel_number = EXCLUDED.parcel_number,
                 address_raw = EXCLUDED.address_raw,

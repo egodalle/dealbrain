@@ -8,8 +8,10 @@ from pathlib import Path
 from typing import Any
 
 import httpx
+import pytest
 
 from pipelines.base import BasePipeline
+from pipelines.opa import require_parcel_id
 
 FIXTURES = Path(__file__).parent.parent / "fixtures" / "db03"
 
@@ -26,7 +28,7 @@ class _StubPipeline(BasePipeline):
     socrata_url: str = field(default=_STUB_URL)
     source_id_field: str = field(default="parcel_number")
     raw_table: str = field(default="raw.opa_assessments")
-    staging_table: str = field(default="staging.opa_assessments")
+    staging_table: str = field(default="staging.opa_properties")
 
     def upsert_staging(self, conn: Any, raw_ids: list[int]) -> int:
         return 0
@@ -42,7 +44,7 @@ def _stub() -> _StubPipeline:
         socrata_url=_STUB_URL,
         source_id_field="parcel_number",
         raw_table="raw.opa_assessments",
-        staging_table="staging.opa_assessments",
+        staging_table="staging.opa_properties",
     )
 
 
@@ -52,7 +54,7 @@ def _stub_with_transport(transport: httpx.MockTransport) -> _StubPipeline:
         socrata_url=_STUB_URL,
         source_id_field="parcel_number",
         raw_table="raw.opa_assessments",
-        staging_table="staging.opa_assessments",
+        staging_table="staging.opa_properties",
         http_client=httpx.Client(transport=transport),
     )
 
@@ -217,3 +219,26 @@ def test_fetch_pages_stops_on_empty() -> None:
     pipeline = _stub_with_transport(_make_transport([[]]))
     pages = list(pipeline.fetch_pages())
     assert pages == []
+
+
+# ---------------------------------------------------------------------------
+# Null parcel_id rejection (AC-6)
+# ---------------------------------------------------------------------------
+
+
+def test_null_parcel_id_rejected() -> None:
+    """require_parcel_id raises ValueError for None or empty string."""
+    with pytest.raises(ValueError, match="parcel_number must not be null"):
+        require_parcel_id(None)
+
+    with pytest.raises(ValueError, match="parcel_number must not be null"):
+        require_parcel_id("")
+
+    with pytest.raises(ValueError, match="parcel_number must not be null"):
+        require_parcel_id("   ")
+
+
+def test_valid_parcel_id_passes() -> None:
+    """require_parcel_id returns the string for a non-empty value."""
+    assert require_parcel_id("001000000") == "001000000"
+    assert require_parcel_id(123) == "123"
