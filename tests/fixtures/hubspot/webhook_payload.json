@@ -1,0 +1,21 @@
+[
+  {
+    "eventId": 1001,
+    "subscriptionId": 42,
+    "portalId": 99999,
+    "appId": 1234,
+    "occurredAt": 1700000000000,
+    "subscriptionType": "contact.propertyChange",
+    "attemptNumber": 0,
+    "objectId": "hs-001",
+    "changeSource": "CRM_UI",
+    "propertyName": "phone",
+    "propertyValue": "555-9999",
+    "properties": {
+      "firstname": "Alice",
+      "lastname": "Smith",
+      "email": "alice@example.test",
+      "phone": "555-9999"
+    }
+  }
+]
