@@ -2,7 +2,10 @@
 name = "dealbrain"
 version = "0.1.0"
 requires-python = ">=3.12,<3.13"
-dependencies = []
+dependencies = [
+    "httpx>=0.28.1",
+    "psycopg[binary]>=3.3.9",
+]
 
 [tool.ruff]
 line-length = 100
@@ -19,6 +22,7 @@ exclude = ["apps/portal/"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["."]
 
 [dependency-groups]
 dev = [

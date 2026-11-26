@@ -1,0 +1,20 @@
+[
+  {
+    "document_id": "DOC-00001",
+    "parcel_number": "001000000",
+    "grantees": "SYNTHETIC BUYER A",
+    "grantors": "SYNTHETIC SELLER A",
+    "recording_date": "2020-01-15",
+    "total_consideration": "240000",
+    "document_type": "DEED"
+  },
+  {
+    "document_id": "DOC-00002",
+    "parcel_number": "002000000",
+    "grantees": "SYNTHETIC BUYER B",
+    "grantors": "SYNTHETIC SELLER B",
+    "recording_date": "2019-06-01",
+    "total_consideration": "305000",
+    "document_type": "DEED"
+  }
+]
