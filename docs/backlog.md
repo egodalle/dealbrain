@@ -4,7 +4,7 @@ Owned by `product-owner`. These are seed stories from the 2-week plan. The PO ex
 
 | ID | Day | Story | Lead | Key acceptance signal | Status |
 |---|---|---|---|---|---|
-| DB-01 | 1 | Repo layout, standards, CI, local Compose with pgvector | architect → data-engineer | `git clone && make up` works; CI green on first PR | todo |
+| DB-01 | 1 | Repo layout, standards, CI, local Compose with pgvector | architect → data-engineer | `git clone && make up` works; CI green on first PR | ready |
 | DB-02 | 1 | VPS + Tailscale-only admin + hello-world portal deploy | data-engineer | Portal reachable over the tailnet; no public ports except the demo Funnel | todo |
 | DB-03 | 2 | Philly open-data ingestion (OPA, violations, transfers, delinquency) into raw → staging → core | data-engineer | 2nd run inserts 0 rows; 1 changed row updates exactly 1 | todo |
 | DB-04 | 3 | Address normalization + entity resolution + dedupe | data-engineer | Precision/recall on 200 labeled pairs reported | todo |
